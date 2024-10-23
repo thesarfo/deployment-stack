@@ -1,4 +1,4 @@
 template-file-path: ./CFTemplate.yaml
 parameters: {}
 tags: 
-  project: 'git-sync-test'
+  project: 'test-tag'
