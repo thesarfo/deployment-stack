@@ -1,0 +1,214 @@
+Resources:
+  labonebucket33BD3369:
+    Type: AWS::S3::Bucket
+    Properties:
+      VersioningConfiguration:
+        Status: Enabled
+    UpdateReplacePolicy: Retain
+    DeletionPolicy: Retain
+    Metadata:
+      aws:cdk:path: lab-one-stack/lab-one-bucket/Resource
+  s3group4C3E9D3E:
+    Type: AWS::IAM::Group
+    Properties:
+      GroupName: labOne-S3-Group
+    Metadata:
+      aws:cdk:path: lab-one-stack/s3group/Resource
+  s3groupDefaultPolicy7D35DF74:
+    Type: AWS::IAM::Policy
+    Properties:
+      Groups:
+        - Ref: s3group4C3E9D3E
+      PolicyDocument:
+        Statement:
+          - Action:
+              - s3:GetObject
+              - s3:ListBucket
+            Effect: Allow
+            Resource:
+              - Fn::GetAtt:
+                  - labonebucket33BD3369
+                  - Arn
+              - Fn::Join:
+                  - ""
+                  - - Fn::GetAtt:
+                        - labonebucket33BD3369
+                        - Arn
+                    - /*
+        Version: "2012-10-17"
+      PolicyName: s3groupDefaultPolicy7D35DF74
+    Metadata:
+      aws:cdk:path: lab-one-stack/s3group/DefaultPolicy/Resource
+  ec2group7BA257A6:
+    Type: AWS::IAM::Group
+    Properties:
+      GroupName: labOne-ec2-group
+    Metadata:
+      aws:cdk:path: lab-one-stack/ec2group/Resource
+  ec2groupDefaultPolicy8CE4E1D2:
+    Type: AWS::IAM::Policy
+    Properties:
+      Groups:
+        - Ref: ec2group7BA257A6
+      PolicyDocument:
+        Statement:
+          - Action:
+              - s3:GetObject
+              - s3:ListBucket
+            Effect: Allow
+            Resource:
+              - Fn::GetAtt:
+                  - labonebucket33BD3369
+                  - Arn
+              - Fn::Join:
+                  - ""
+                  - - Fn::GetAtt:
+                        - labonebucket33BD3369
+                        - Arn
+                    - /*
+        Version: "2012-10-17"
+      PolicyName: ec2groupDefaultPolicy8CE4E1D2
+    Metadata:
+      aws:cdk:path: lab-one-stack/ec2group/DefaultPolicy/Resource
+  OneTimePasswordSecret67B899CA:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      GenerateSecretString:
+        ExcludeCharacters: /\"
+        GenerateStringKey: password
+        SecretStringTemplate: '{"password":""}'
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+    Metadata:
+      aws:cdk:path: lab-one-stack/OneTimePasswordSecret/Resource
+  labonefirstuser19E71B61:
+    Type: AWS::IAM::User
+    Properties:
+      Groups:
+        - Ref: s3group4C3E9D3E
+      LoginProfile:
+        Password:
+          Fn::Join:
+            - ""
+            - - "{{resolve:secretsmanager:"
+              - Ref: OneTimePasswordSecret67B899CA
+              - :SecretString:password::}}
+        PasswordResetRequired: true
+      UserName: thesarfo-lab1
+    Metadata:
+      aws:cdk:path: lab-one-stack/lab-one-first-user/Resource
+  laboneseconduser13350D00:
+    Type: AWS::IAM::User
+    Properties:
+      Groups:
+        - Ref: s3group4C3E9D3E
+      LoginProfile:
+        Password:
+          Fn::Join:
+            - ""
+            - - "{{resolve:secretsmanager:"
+              - Ref: OneTimePasswordSecret67B899CA
+              - :SecretString:password::}}
+        PasswordResetRequired: true
+      UserName: ernesto-lab1
+    Metadata:
+      aws:cdk:path: lab-one-stack/lab-one-second-user/Resource
+  labonefirstuseremail2D586704:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: thesarfo-lab1
+      Type: String
+      Value: thesarfo1@gmail.com
+    Metadata:
+      aws:cdk:path: lab-one-stack/lab-one-first-user-email/Resource
+  User2Email94ED3FDF:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: ernesto-lab1
+      Type: String
+      Value: ernestsarfo100@gmail.com
+    Metadata:
+      aws:cdk:path: lab-one-stack/User2Email/Resource
+  UserCreationLambdaServiceRoleDB8660B4:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+    Metadata:
+      aws:cdk:path: lab-one-stack/UserCreationLambda/ServiceRole/Resource
+  UserCreationLambdaBBC7B93F:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        S3Bucket: cdk-hnb659fds-assets-058264328200-us-east-1
+        S3Key: f7e3b47d5983b90661e4dd9a3484eefae08054eb5774251a5fe97362a810ec07.jar
+      Handler: com.myorg.lambda.UserCreationHandler::handleRequest
+      Role:
+        Fn::GetAtt:
+          - UserCreationLambdaServiceRoleDB8660B4
+          - Arn
+      Runtime: java21
+    DependsOn:
+      - UserCreationLambdaServiceRoleDB8660B4
+    Metadata:
+      aws:cdk:path: lab-one-stack/UserCreationLambda/Resource
+      aws:asset:path: asset.f7e3b47d5983b90661e4dd9a3484eefae08054eb5774251a5fe97362a810ec07.jar
+      aws:asset:is-bundled: false
+      aws:asset:property: Code
+  UserCreationRuleEC3D80AD:
+    Type: AWS::Events::Rule
+    Properties:
+      EventPattern:
+        detail:
+          eventName:
+            - CreateUser
+        detail-type:
+          - AWS API Call via CloudTrail
+        source:
+          - aws.iam
+      State: ENABLED
+      Targets:
+        - Arn:
+            Fn::GetAtt:
+              - UserCreationLambdaBBC7B93F
+              - Arn
+          Id: Target0
+    Metadata:
+      aws:cdk:path: lab-one-stack/UserCreationRule/Resource
+  UserCreationRuleAllowEventRulelabonestackUserCreationLambdaEA9DB53794799508:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Fn::GetAtt:
+          - UserCreationLambdaBBC7B93F
+          - Arn
+      Principal: events.amazonaws.com
+      SourceArn:
+        Fn::GetAtt:
+          - UserCreationRuleEC3D80AD
+          - Arn
+    Metadata:
+      aws:cdk:path: lab-one-stack/UserCreationRule/AllowEventRulelabonestackUserCreationLambdaEA9DB537
+  CDKMetadata:
+    Type: AWS::CDK::Metadata
+    Properties:
+      Analytics: v2:deflate64:H4sIAAAAAAAA/02OQWvDMAyFf0vvitY2Y/d1sMFOIWHnorpa0BLbw7JbhvF/H07C2Ol9H+8hdMTDU4v7Hd21MdepmeWCeYhkJqC7nrO2mE/JTBzh5dNttMaJlAsIWcxvwafvOlih87OYn+obfSiHqkv2fuYqNQsom8BRLTkaOWAeFq/9SgVUbX0piBs7CmQ5rsf+pMBM9nIlzK/JmSje1fo/dxysqIp3BbQ9kypHxecawDd2UTH3aXsrzVwK9Kw+BcOwrIZIo7hx6beiwDvd6OF4wD0+7r5UpAnJRbGM/Zq/ItPL/FwBAAA=
+    Metadata:
+      aws:cdk:path: lab-one-stack/CDKMetadata/Default
+Parameters:
+  BootstrapVersion:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /cdk-bootstrap/hnb659fds/version
+    Description: Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]
