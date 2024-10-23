@@ -1,4 +1,4 @@
 template-file-path: ./CFTemplate.yaml
 parameters: {}
 tags: 
-  project: 'test-tag'
+  project: 'test-demo-tag'

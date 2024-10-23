@@ -94,7 +94,7 @@ Resources:
               - Ref: OneTimePasswordSecret67B899CA
               - :SecretString:password::}}
         PasswordResetRequired: true
-      UserName: thesarfo-lab1
+      UserName: kofisarfo-lab1
     Metadata:
       aws:cdk:path: lab-one-stack/lab-one-first-user/Resource
   laboneseconduser13350D00:
